@@ -68,7 +68,7 @@ icc(baseline)
 
 The intraclass correlation for the baseline linear mixed effect (LME) model including satisfaction with life without predictors (just the intercept) was ICC(1)=0.74, suggesting that 74% of the total variance in satisfaction with life scores in the model is attributed to cluster effects (i.e., repeated measures coming from the same participant), supporting the use of a linear mixed model approach. Further supporting the use of a linear mixed effect model, a design effect of 12.30 suggests that the use of a model that does not account for clustering would artificially inflate the sample size as if it were 12 times larger, increasing the risk of type 1 error.
 
-## Model building for Hypothesis 1 and 2
+## Model building
 
 Report the data analysis strategy with all your choice points. A data analytic strategy where you describe what you did regarding: a) fixed vs. random slopes, if used, b) what kind of estimator (ML vs. REML) and c) writing out the model you tested in EQUATION FORM, like in class. Where required, defend your choices (e.g., nested model comparisons).
 
