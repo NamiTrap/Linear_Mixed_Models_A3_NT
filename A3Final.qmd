@@ -1,0 +1,153 @@
+---
+title: "A3_Final"
+format: html
+editor: visual
+---
+
+## Setting up R Code
+
+```{r}
+#These are all the packages required to run this R script
+#install.packages("tidyverse")
+#install.packages("haven")
+#install.packages("lme4")
+#install.packages("flexplot")
+#install.packages("car")
+#install.packages("apaTables")
+#install.packages("performance")
+#install.packages("sjPlot")
+
+#Loading packages required for this R script
+library(tidyverse)
+library(haven)
+library(lme4)
+library(flexplot)
+library(car)
+library(apaTables)
+library(performance)
+library(sjPlot)
+
+#import datset
+DataA3 <- read_sav("P6003.A4.sav")
+View(DataA3)
+```
+
+## Screening Data Prior to Analysis
+
+Screen the data (i.e., explore the raw data visually) and assess for all assumptions. If assumptions are violated, note it in the text and interpretation
+
+```{r}
+#look at any missing data and if there is a reason to remove.  
+
+#Visualize univariate distributions (bar charts or histograms)
+flexplot(swl~1, data = DataA3) #Distribution of satisfaction with life (swl)
+flexplot(tipm.E~1, data = DataA3) #Distribution of Extraversion 
+flexplot(tipm.N~1, data = DataA3) #Distribution of Neuroticism
+```
+
+## Descriptive Statistics
+
+report a table with Means, Standard Deviations, and bivariate correlation matrix. For the correlations, you can just report the correlations on all 4252 observations, ignoring the clustering (there are better ways to do this, but this is fine for here).
+
+```{r}
+#Cleaning columbs in data (removing variables not of interest) for correlation table 
+data <- DataA3 %>% select(-tipm.A, -tipm.C, -tipm.O, -tipm.E.lev2, -tipm.N.lev2, -tipm.E.lev1.c, -tipm.E.lev2.c, -tipm.N.lev1.c, -tipm.N.lev2.c, -spss.mean, -RESID_1, -RESID_2, -PRED_1, -PRED_2)
+View(data)
+apa.cor.table(data, filename = "Cor_Table_A3.doc")
+```
+
+## Baseline Model
+
+```{r}
+#Baseline linear mixed model with random intercept only (DV without any predictors)
+baseline <- lmer(swl ~ 1+(1|id), data = DataA3) #Look at the intraclass correlation (ICC) and measures for effect size
+summary(baseline) 
+#Compute ICC using the flexplot package
+icc(baseline) 
+```
+
+The intraclass correlation for the baseline linear mixed effect (LME) model including satisfaction with life without predictors (just the intercept) was ICC(1)=0.74, suggesting that 74% of the total variance in satisfaction with life scores in the model is attributed to cluster effects (i.e., repeated measures coming from the same participant), supporting the use of a linear mixed model approach. Further supporting the use of a linear mixed effect model, a design effect of 12.30 suggests that the use of a model that does not account for clustering would artificially inflate the sample size as if it were 12 times larger, increasing the risk of type 1 error.
+
+## Model building for Hypothesis 1 and 2
+
+Report the data analysis strategy with all your choice points. A data analytic strategy where you describe what you did regarding: a) fixed vs. random slopes, if used, b) what kind of estimator (ML vs. REML) and c) writing out the model you tested in EQUATION FORM, like in class. Where required, defend your choices (e.g., nested model comparisons).
+
+```{r}
+#Checking for muticollinarity between predictors 
+fixed_model <- lm(swl ~ tipm.E + tipm.N, data = DataA3)
+vif(fixed_model) #no problematic multicollinrarity
+
+#Building the model using a nested model comparison approach to find the best fitting model (Evaluate necessity of modeling random effects)
+LMM_FS <- lmer(swl ~ tipm.E + tipm.N + (1|id), data = DataA3)
+LMM_ERS <- lmer(swl ~ tipm.E + tipm.N + (tipm.E|id), data = DataA3)
+LMM_NRS <- lmer(swl ~ tipm.E + tipm.N + (tipm.N|id), data = DataA3)
+LMM_ERS_NRS <- lmer(swl ~ tipm.E + tipm.N + (tipm.E+tipm.N|id), data = DataA3)
+#Model comparisons
+model.comparison(LMM_FS, LMM_ERS)
+model.comparison(LMM_FS, LMM_NRS)
+model.comparison(LMM_ERS, LMM_ERS_NRS)
+model.comparison(LMM_NRS, LMM_ERS_NRS)
+#Best fit model: 
+LMM_RS <- lmer(swl ~ tipm.E + tipm.N + (tipm.E + tipm.N|id), data = DataA3)
+
+```
+
+The model we tested in equation form is the following:
+
+swl = B0 + B1(tipm.E) + B2(tipm.N) + r0 + r1(tipm.E) + r2(tipm.N) + e
+
+where B0...
+
+Model comparisons were conducted using the lmer package in R using restricted maximum likelihood estimation (REML) because all models compared only differed in random effects (not fixed effects).
+
+## Visualizing and computing estimates for Hypothesis 1 and 2
+
+```{r}
+# Visualize the model we built 
+visualize(LMM_RS, plot = "model", sample=6)
+
+#Visualize the diagnoistics and assess whether our assumptions have been met
+visualize(LMM_RS, plot = "residuals" )
+
+#Normaility of residuals 
+qqnorm(resid(LMM_RS))
+qqline(resid(LMM_RS))
+
+#Compute and interperet estimates of interest. Note: have to detach the lmerTest package for it to work 
+#detach("package:lmerTest", unload = TRUE) #please include this if the code does not run
+library(lme4)
+LMM_RS <- lmer(swl ~ tipm.E + tipm.N + (tipm.E + tipm.N|id), data = DataA3)
+summary(LMM_RS) #note that LME uses Maximum Likelihood Estimation
+flexplot::estimates(LMM_RS) 
+#Get p-values if you want by simply loading the package lmerTest and rerunning the model
+library(lmerTest)
+LMM_RS <- lmer(swl ~ tipm.E + tipm.N + (tipm.E + tipm.N|id), data = DataA3)
+summary(LMM_RS) #This output should now include p-values for fixed effects
+#Get traditional R2 estimates
+library(performance)
+r2(LMM_RS) #model is a good fit for the data. 
+```
+
+The fitted linear mixed effect model equation was expressed as:
+
+swl = 4.44 + 0.24(tipm.E) - 0.32(tipm.N) + r0 + r1(tipm.E) + r2(tipm.N) + e
+
+## Results in Table
+
+a table including Bs, SEs, 95% CIs, p-values, (if you choose to), ICC, and R-squared for your final selected model
+
+```{r}
+tab_model(LMM_RS,
+          show.icc = TRUE,
+          show.r2 = TRUE,
+          show.se = TRUE,
+          show.p = TRUE,
+          string.intercept = "Intercept",
+          title = "Linear Mixed Model Predicting Satisfaction with Life", 
+          show.re.var = TRUE) #QUESTION: Should I remove the random effects from the table? 
+
+```
+
+## 
+
+## 
